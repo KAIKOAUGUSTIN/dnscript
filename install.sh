@@ -1,114 +1,82 @@
 #!/bin/bash
 
-# install.sh
-# Instalador para Cloudflare DDNS Updater
-# Repositório: KAIKOAUGUSTIN/dnscript
-
 set -e
 
-# --- CONFIGURAÇÃO ---
-# URL Base do seu repositório GitHub (Raw)
-# Se o repositório for PRIVADO, adicione o token ao final: ?token=SEU_TOKEN
-GITHUB_RAW_URL="https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main"
-# ---------------------
-
 INSTALL_DIR="/opt/ddns-updater"
-SERVICE_NAME="ddns-updater"
-LOG_FILE="/var/log/ddns_updater.log"
+VENV_DIR="$INSTALL_DIR/venv"
+SERVICE_FILE="/etc/systemd/system/ddns-updater.service"
+TIMER_FILE="/etc/systemd/system/ddns-updater.timer"
 
-echo "🚀 Iniciando instalação do Cloudflare DDNS Updater..."
+echo "🚀 Instalando Cloudflare DDNS Updater..."
 
-# 1. Verificar curl
-if ! command -v curl &> /dev/null; then
-    echo "❌ curl não está instalado. Por favor instale primeiro."
-    exit 1
-fi
-
-# 2. Verificar Python 3
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 não está instalado. Por favor instale primeiro."
-    exit 1
-fi
-
-# 3. Criar Diretório
+# Criar diretório
 sudo mkdir -p $INSTALL_DIR
-echo "📁 Diretório criado: $INSTALL_DIR"
 
-# 4. Baixar Script Principal (ddns_updater.py)
+# Baixar script principal
 echo "📥 Baixando ddns_updater.py..."
-# Tenta baixar, se falhar (ex: token faltando), avisa
-if ! sudo curl -sSL "$GITHUB_RAW_URL/ddns_updater.py" -o "$INSTALL_DIR/ddns_updater.py"; then
-    echo "❌ Falha ao baixar ddns_updater.py. Verifique se o arquivo existe no GitHub ou se precisa de token."
-    exit 1
-fi
-sudo chmod +x "$INSTALL_DIR/ddns_updater.py"
+sudo curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/ddns_updater.py -o $INSTALL_DIR/ddns_updater.py
 
-# 5. Baixar Configuração (config.yaml)
-# Só baixa se não existir, para não sobrescrever suas credenciais
+# Baixar config se não existir
 if [ ! -f "$INSTALL_DIR/config.yaml" ]; then
     echo "📥 Baixando config.yaml..."
-    if ! sudo curl -sSL "$GITHUB_RAW_URL/config.yaml" -o "$INSTALL_DIR/config.yaml"; then
-        echo "❌ Falha ao baixar config.yaml."
-        exit 1
-    fi
-    echo "⚠️  IMPORTANTE: Edite $INSTALL_DIR/config.yaml com suas credenciais."
+    sudo curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/config.yaml -o $INSTALL_DIR/config.yaml
+    echo "⚠️  Edite $INSTALL_DIR/config.yaml com suas credenciais."
 else
-    echo "💾 config.yaml já existe. Pulando download para preservar credenciais."
+    echo "💾 config.yaml já existe. Preservando."
 fi
 
-# 6. Definir Permissões (Segurança)
-sudo chmod 700 $INSTALL_DIR
+# Permissões
 sudo chmod 600 $INSTALL_DIR/config.yaml
-echo "🔒 Permissões seguradas."
+sudo chmod +x $INSTALL_DIR/ddns_updater.py
 
-# 7. Instalar Dependências Python
-echo "📦 Instalando dependências Python..."
-sudo pip3 install requests pyyaml
+# Instalar dependências do sistema
+echo "📦 Instalando dependências do sistema..."
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip curl
 
-# 8. Criar Arquivo de Log
-sudo touch $LOG_FILE
-sudo chmod 644 $LOG_FILE
+# Criar ambiente virtual
+echo "🐍 Criando ambiente virtual..."
+sudo python3 -m venv $VENV_DIR
 
-# 9. Criar Serviço Systemd
-echo "⚙️ Configurando serviço Systemd..."
-sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.service <<EOF
+# Instalar dependências Python no venv
+echo "📦 Instalando dependências Python no venv..."
+sudo $VENV_DIR/bin/pip install --upgrade pip
+sudo $VENV_DIR/bin/pip install requests pyyaml
+
+# Criar systemd service
+echo "⚙️ Criando service..."
+sudo tee $SERVICE_FILE > /dev/null <<EOF
 [Unit]
 Description=Cloudflare DDNS Updater
-After=network-online.target
-Wants=network-online.target
+After=network.target
 
 [Service]
 Type=oneshot
-ExecStart=/usr/bin/python3 $INSTALL_DIR/ddns_updater.py
-WorkingDirectory=$INSTALL_DIR
-StandardOutput=journal
-StandardError=journal
+ExecStart=$VENV_DIR/bin/python $INSTALL_DIR/ddns_updater.py
+User=root
+EOF
 
-[Install]
-WantedBy=multi-user.target
-EOF"
-
-# 10. Criar Timer (Rodar a cada 5 minutos)
-sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.timer <<EOF
+# Criar timer
+echo "⏱ Criando timer..."
+sudo tee $TIMER_FILE > /dev/null <<EOF
 [Unit]
-Description=Rodar DDNS Updater a cada 5 minutos
-Requires=$SERVICE_NAME.service
+Description=Run DDNS Updater every 5 minutes
 
 [Timer]
 OnBootSec=1min
 OnUnitActiveSec=5min
-Unit=$SERVICE_NAME.service
+Unit=ddns-updater.service
 
 [Install]
 WantedBy=timers.target
-EOF"
+EOF
 
-# 11. Habilitar e Iniciar
+# Recarregar systemd
 sudo systemctl daemon-reload
-sudo systemctl enable $SERVICE_NAME.timer
-sudo systemctl start $SERVICE_NAME.timer
 
-echo "✅ Instalação Completa!"
-echo "📝 Arquivo de config: $INSTALL_DIR/config.yaml"
-echo "🔍 Ver status: sudo systemctl status $SERVICE_NAME.timer"
-echo "📄 Ver logs: sudo journalctl -u $SERVICE_NAME.service"
+# Ativar timer
+sudo systemctl enable ddns-updater.timer
+sudo systemctl start ddns-updater.timer
+
+echo "✅ Instalação concluída!"
+echo "🔎 Verifique com: systemctl list-timers | grep ddns"
