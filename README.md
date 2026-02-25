@@ -86,6 +86,7 @@ settings:
   log_file: "/var/log/ddns_updater.log"
 
 cloudflare:
+  email: "youremail@company.com"
   api_token: "YOUR_API_TOKEN"
   zone_id: "YOUR_ZONE_ID"
 
@@ -107,12 +108,6 @@ dns_records:
 
 -   Never commit `config.yaml` to version control
 -   Use minimal Cloudflare API permissions
--   Restrict file permissions:
-
-``` bash
-sudo chmod 600 /opt/ddns-updater/config.yaml
-sudo chown root:root /opt/ddns-updater/config.yaml
-```
 
 ------------------------------------------------------------------------
 
