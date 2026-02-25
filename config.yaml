@@ -1,0 +1,28 @@
+# config.yaml
+# Upload this to your GitHub repo for the installer to fetch it
+
+settings:
+  check_interval: 300
+  log_level: INFO
+  log_file: "/var/log/ddns_updater.log"
+
+cloudflare:
+  email: "your-email@example.com"
+  api_token: "YOUR_CLOUDFLARE_API_TOKEN"
+  zone_id: "YOUR_ZONE_ID"
+
+telegram:
+  enabled: true
+  bot_token: "YOUR_TELEGRAM_BOT_TOKEN"
+  chat_id: "YOUR_TELEGRAM_CHAT_ID"
+
+dns_records:
+  - name: "home.example.com"
+    type: "A"
+    proxied: false
+    use_cloudflared: false
+    
+  - name: "nas.example.com"
+    type: "A"
+    proxied: true
+    use_cloudflared: true
