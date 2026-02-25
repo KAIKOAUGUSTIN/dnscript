@@ -1,67 +1,76 @@
 #!/bin/bash
 
 # install.sh
-# Installer for Cloudflare DDNS Updater
-# IMPORTANT: Update the GITHUB_RAW_URL below with your own GitHub Raw links
+# Instalador para Cloudflare DDNS Updater
+# Repositório: KAIKOAUGUSTIN/dnscript
 
 set -e
 
-# --- CONFIGURATION ---
-# Replace this with your GitHub Raw URL (e.g., https://raw.githubusercontent.com/USER/REPO/BRANCH)
-GITHUB_RAW_URL="https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main"
+# --- CONFIGURAÇÃO ---
+# URL Base do seu repositório GitHub (Raw)
+# Se o repositório for PRIVADO, adicione o token ao final: ?token=SEU_TOKEN
+GITHUB_RAW_URL="https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main"
 # ---------------------
 
 INSTALL_DIR="/opt/ddns-updater"
 SERVICE_NAME="ddns-updater"
 LOG_FILE="/var/log/ddns_updater.log"
 
-echo "🚀 Starting Cloudflare DDNS Updater Installation..."
+echo "🚀 Iniciando instalação do Cloudflare DDNS Updater..."
 
-# 1. Check for curl
+# 1. Verificar curl
 if ! command -v curl &> /dev/null; then
-    echo "❌ curl is not installed. Please install it first."
+    echo "❌ curl não está instalado. Por favor instale primeiro."
     exit 1
 fi
 
-# 2. Check for Python 3
+# 2. Verificar Python 3
 if ! command -v python3 &> /dev/null; then
-    echo "❌ Python 3 is not installed. Please install it first."
+    echo "❌ Python 3 não está instalado. Por favor instale primeiro."
     exit 1
 fi
 
-# 3. Create Directory
+# 3. Criar Diretório
 sudo mkdir -p $INSTALL_DIR
-echo "📁 Created directory: $INSTALL_DIR"
+echo "📁 Diretório criado: $INSTALL_DIR"
 
-# 4. Download Main Script
-echo "📥 Downloading ddns_updater.py..."
-sudo curl -sSL "$GITHUB_RAW_URL/ddns_updater.py" -o "$INSTALL_DIR/ddns_updater.py"
+# 4. Baixar Script Principal (ddns_updater.py)
+echo "📥 Baixando ddns_updater.py..."
+# Tenta baixar, se falhar (ex: token faltando), avisa
+if ! sudo curl -sSL "$GITHUB_RAW_URL/ddns_updater.py" -o "$INSTALL_DIR/ddns_updater.py"; then
+    echo "❌ Falha ao baixar ddns_updater.py. Verifique se o arquivo existe no GitHub ou se precisa de token."
+    exit 1
+fi
 sudo chmod +x "$INSTALL_DIR/ddns_updater.py"
 
-# 5. Download Config File (Only if it doesn't exist to preserve credentials)
+# 5. Baixar Configuração (config.yaml)
+# Só baixa se não existir, para não sobrescrever suas credenciais
 if [ ! -f "$INSTALL_DIR/config.yaml" ]; then
-    echo "📥 Downloading config.yaml..."
-    sudo curl -sSL "$GITHUB_RAW_URL/config.yaml" -o "$INSTALL_DIR/config.yaml"
-    echo "⚠️  Please edit $INSTALL_DIR/config.yaml with your credentials."
+    echo "📥 Baixando config.yaml..."
+    if ! sudo curl -sSL "$GITHUB_RAW_URL/config.yaml" -o "$INSTALL_DIR/config.yaml"; then
+        echo "❌ Falha ao baixar config.yaml."
+        exit 1
+    fi
+    echo "⚠️  IMPORTANTE: Edite $INSTALL_DIR/config.yaml com suas credenciais."
 else
-    echo "💾 config.yaml already exists. Skipping download to preserve credentials."
+    echo "💾 config.yaml já existe. Pulando download para preservar credenciais."
 fi
 
-# 6. Set Permissions (Secure Config)
+# 6. Definir Permissões (Segurança)
 sudo chmod 700 $INSTALL_DIR
 sudo chmod 600 $INSTALL_DIR/config.yaml
-echo "🔒 Permissions secured."
+echo "🔒 Permissões seguradas."
 
-# 7. Install Python Dependencies
-echo "📦 Installing Python dependencies..."
+# 7. Instalar Dependências Python
+echo "📦 Instalando dependências Python..."
 sudo pip3 install requests pyyaml
 
-# 8. Create Log File
+# 8. Criar Arquivo de Log
 sudo touch $LOG_FILE
 sudo chmod 644 $LOG_FILE
 
-# 9. Create Systemd Service
-echo "⚙️ Setting up Systemd service..."
+# 9. Criar Serviço Systemd
+echo "⚙️ Configurando serviço Systemd..."
 sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.service <<EOF
 [Unit]
 Description=Cloudflare DDNS Updater
@@ -79,10 +88,10 @@ StandardError=journal
 WantedBy=multi-user.target
 EOF"
 
-# 10. Create Timer (To run every 5 minutes)
+# 10. Criar Timer (Rodar a cada 5 minutos)
 sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME.timer <<EOF
 [Unit]
-Description=Run DDNS Updater every 5 minutes
+Description=Rodar DDNS Updater a cada 5 minutos
 Requires=$SERVICE_NAME.service
 
 [Timer]
@@ -94,12 +103,12 @@ Unit=$SERVICE_NAME.service
 WantedBy=timers.target
 EOF"
 
-# 11. Enable and Start
+# 11. Habilitar e Iniciar
 sudo systemctl daemon-reload
 sudo systemctl enable $SERVICE_NAME.timer
 sudo systemctl start $SERVICE_NAME.timer
 
-echo "✅ Installation Complete!"
-echo "📝 Config file location: $INSTALL_DIR/config.yaml"
-echo "🔍 Check status with: sudo systemctl status $SERVICE_NAME.timer"
-echo "📄 View logs with: sudo journalctl -u $SERVICE_NAME.service"
+echo "✅ Instalação Completa!"
+echo "📝 Arquivo de config: $INSTALL_DIR/config.yaml"
+echo "🔍 Ver status: sudo systemctl status $SERVICE_NAME.timer"
+echo "📄 Ver logs: sudo journalctl -u $SERVICE_NAME.service"
