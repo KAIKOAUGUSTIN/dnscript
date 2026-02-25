@@ -5,9 +5,8 @@ set -e
 INSTALL_DIR="/opt/ddns-updater"
 VENV_DIR="$INSTALL_DIR/venv"
 SERVICE_FILE="/etc/systemd/system/ddns-updater.service"
-TIMER_FILE="/etc/systemd/system/ddns-updater.timer"
 
-echo "🚀 Instalando Cloudflare DDNS Updater..."
+echo "🚀 Instalando Cloudflare DDNS Updater (modo loop + restart automático)..."
 
 # Criar diretório
 sudo mkdir -p $INSTALL_DIR
@@ -43,7 +42,7 @@ echo "📦 Instalando dependências Python no venv..."
 sudo $VENV_DIR/bin/pip install --upgrade pip
 sudo $VENV_DIR/bin/pip install requests pyyaml
 
-# Criar systemd service
+# Criar systemd service (SEM TIMER)
 echo "⚙️ Criando service..."
 sudo tee $SERVICE_FILE > /dev/null <<EOF
 [Unit]
@@ -51,32 +50,23 @@ Description=Cloudflare DDNS Updater
 After=network.target
 
 [Service]
-Type=oneshot
-ExecStart=$VENV_DIR/bin/python $INSTALL_DIR/ddns_updater.py
+Type=simple
 User=root
-EOF
-
-# Criar timer
-echo "⏱ Criando timer..."
-sudo tee $TIMER_FILE > /dev/null <<EOF
-[Unit]
-Description=Run DDNS Updater every 5 minutes
-
-[Timer]
-OnBootSec=1min
-OnUnitActiveSec=5min
-Unit=ddns-updater.service
+WorkingDirectory=$INSTALL_DIR
+ExecStart=$VENV_DIR/bin/python $INSTALL_DIR/ddns_updater.py
+Restart=always
+RestartSec=5
 
 [Install]
-WantedBy=timers.target
+WantedBy=multi-user.target
 EOF
 
 # Recarregar systemd
 sudo systemctl daemon-reload
 
-# Ativar timer
-sudo systemctl enable ddns-updater.timer
-sudo systemctl start ddns-updater.timer
+# Habilitar e iniciar serviço
+sudo systemctl enable ddns-updater.service
+sudo systemctl restart ddns-updater.service
 
 echo "✅ Instalação concluída!"
-echo "🔎 Verifique com: systemctl list-timers | grep ddns"
+echo "🔎 Verifique com: systemctl status ddns-updater.service"
