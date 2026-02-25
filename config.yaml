@@ -2,17 +2,17 @@
 # Upload this to your GitHub repo for the installer to fetch it
 
 settings:
-  check_interval: 300
+  log_file: /var/log/ddns_updater.log
   log_level: INFO
-  log_file: "/var/log/ddns_updater.log"
+  update_interval: 300  # segundos
 
 cloudflare:
-  email: "your-email@example.com"
+  email: "youremail@example.com"
   api_token: "YOUR_CLOUDFLARE_API_TOKEN"
   zone_id: "YOUR_ZONE_ID"
 
 telegram:
-  enabled: true
+  enabled: false
   bot_token: "YOUR_TELEGRAM_BOT_TOKEN"
   chat_id: "YOUR_TELEGRAM_CHAT_ID"
 
@@ -24,5 +24,5 @@ dns_records:
     
   - name: "nas.example.com"
     type: "A"
-    proxied: true
-    use_cloudflared: true
+    proxied: false
+    use_cloudflared: false
