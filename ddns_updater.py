@@ -176,18 +176,4 @@ def main():
                     )
 
 if __name__ == "__main__":
-    main()Unit=ddns-updater.service
-
-[Install]
-WantedBy=timers.target
-EOF
-
-# Recarregar systemd
-sudo systemctl daemon-reload
-
-# Ativar timer
-sudo systemctl enable ddns-updater.timer
-sudo systemctl start ddns-updater.timer
-
-echo "✅ Instalação concluída!"
-echo "🔎 Verifique com: systemctl list-timers | grep ddns"
+    main()
