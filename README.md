@@ -1,7 +1,7 @@
 # 🌐 Cloudflare DDNS Updater
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Python](https://img.shields.io/badge/python-3.6%2B-blue)
+![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux-success)
 ![Cloudflare](https://img.shields.io/badge/API-Cloudflare-orange)
 ![Systemd](https://img.shields.io/badge/service-systemd-lightgrey)
