@@ -1,5 +1,4 @@
 # config.yaml
-# Upload this to your GitHub repo for the installer to fetch it
 
 settings:
   log_file: /var/log/ddns_updater.log
