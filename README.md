@@ -1,11 +1,14 @@
 # 🌐 Cloudflare DDNS Updater
 
-![License](https://img.shields.io/badge/license-GPL-3.0-blue.svg)
+![License](https://img.shields.io/badge/license-GPL3-blue.svg)
 ![Python](https://img.shields.io/badge/python-3.10%2B-blue)
 ![Platform](https://img.shields.io/badge/platform-Linux-success)
 ![Cloudflare](https://img.shields.io/badge/API-Cloudflare-orange)
 ![Systemd](https://img.shields.io/badge/service-systemd-lightgrey)
 ![Status](https://img.shields.io/badge/status-production-brightgreen)
+[![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
+[![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
 
 Atualizador dinâmico de DNS (DDNS) em Python para Cloudflare
 
