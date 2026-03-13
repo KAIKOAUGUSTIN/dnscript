@@ -212,7 +212,7 @@ O desinstalador pede confirmação antes de remover tudo.
 
 ## 📜 Licença
 
-MIT License — veja arquivo `LICENSE` no repositório.
+GPL License — veja arquivo `LICENSE` no repositório.
 
 ---
 
