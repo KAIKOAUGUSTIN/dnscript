@@ -20,7 +20,7 @@ O Cloudflare DDNS Updater mantém seus registros DNS sincronizados com o IP púb
 ## ✨ Funcionalidades
 
 - 🔄 Detecção automática do IP público
-- 🌐 Atualização inteligente de registros DNS (atualiza somente registros pré-existentes)
+- 🌐 Atualização inteligente de registros DNS
 - 📱 Notificações por Telegram em alterações
 - 🔒 Verificação opcional de `cloudflared` antes de atualizar
 - 📝 Logs estruturados com nível configurável
