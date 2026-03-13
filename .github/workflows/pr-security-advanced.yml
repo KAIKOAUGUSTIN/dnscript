@@ -1,0 +1,174 @@
+# GitHub Actions workflow: PR Security — Gitleaks + Semgrep + Trivy + CodeQL
+# Path: .github/workflows/pr-security-advanced.yml
+name: PR Security Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: pr-security-${{ github.repository }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+  security-events: write
+
+env:
+  SEMGREP_CONFIG: "p/ci"   # Ajuste para o seu conjunto de regras (ex: p/security-audit)
+  FAIL_ON_HIGH: "true"
+
+jobs:
+  security-scan:
+    name: Secrets, SCA, SAST & PR Summary
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Necessário para o Gitleaks avaliar o histórico do PR
+
+      # 1. SECRET SCANNING (Gitleaks)
+      - name: Gitleaks (Secret Detection)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 2. SETUP DO AMBIENTE (Sem cache para evitar erro de requirements.txt ausente)
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependências (Semgrep e jq)
+        run: |
+          python -m pip install --upgrade pip
+          pip install semgrep jq
+
+      # 3. SEMGREP (Análise Estática de Código)
+      - name: Run Semgrep
+        id: semgrep
+        run: |
+          semgrep --config "$SEMGREP_CONFIG" --sarif --output=semgrep.sarif || true
+          semgrep --config "$SEMGREP_CONFIG" --json --output=semgrep.json || true
+
+      - name: Upload Semgrep SARIF (GitHub Code Scanning)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4 # Atualizado para v4
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      # 4. TRIVY (Análise de Dependências e Filesystem)
+      - name: Run Trivy FS Scan
+        id: trivy
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: fs
+          scan-ref: '.'
+          format: sarif
+          output: trivy.sarif
+          severity: CRITICAL,HIGH
+        continue-on-error: true
+
+      - name: Upload Trivy SARIF (GitHub Code Scanning)
+        if: always()
+        uses: github/codeql-action/upload-sarif@v4 # Atualizado para v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy
+
+      # 5. ARTEFATOS
+      - name: Upload SARIF artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sarif-reports
+          path: |
+            semgrep.sarif
+            trivy.sarif
+
+      # 6. RESUMO NO PR
+      - name: Gerar Sumário do PR
+        id: make-summary
+        run: |
+          echo "## 🛡️ Resumo da Análise de Segurança" > scan-summary.md
+          
+          # Contagem Semgrep
+          SEM_TOTAL=$(jq '.results | length' semgrep.json 2>/dev/null || echo 0)
+          echo "- **Semgrep (Código):** $SEM_TOTAL vulnerabilidades encontradas." >> scan-summary.md
+          
+          # Contagem Trivy
+          TR_HIGH=$(jq '[.runs[].results[]?.properties.severity] | map(select(.=="HIGH" or .=="CRITICAL")) | length' trivy.sarif 2>/dev/null || echo 0)
+          echo "- **Trivy (Dependências):** $TR_HIGH vulnerabilidades Críticas/Altas." >> scan-summary.md
+
+      - name: Postar Sumário no PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const pr = context.payload.pull_request;
+            if (pr) {
+              const body = fs.readFileSync('scan-summary.md', 'utf8');
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: pr.number,
+                body: body
+              });
+            }
+
+      # 7. NOTIFICAÇÃO SLACK (Opcional)
+      - name: Slack Notification
+        if: ${{ env.SLACK_WEBHOOK != '' && always() }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow
+        env:
+          SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+
+      # 8. QUALITY GATE (Bloqueio de Merge)
+      - name: Quality Gate (Fail on High)
+        if: always()
+        run: |
+          if [ "${FAIL_ON_HIGH}" = "true" ]; then
+            SEM_COUNT=$(jq '[.results[]? | select(.extra.metadata.severity=="ERROR" or .extra.metadata.severity=="HIGH" or .extra.metadata.severity=="CRITICAL")] | length' semgrep.json 2>/dev/null || echo 0)
+            TR_COUNT=$(jq '[.runs[].results[]?.properties.severity] | map(select(.=="CRITICAL" or .=="HIGH")) | length' trivy.sarif 2>/dev/null || echo 0)
+            
+            if [ "$SEM_COUNT" -gt 0 ] || [ "$TR_COUNT" -gt 0 ]; then
+              echo "🚨 Bloqueio Ativo: Vulnerabilidades críticas ou altas encontradas (Semgrep: $SEM_COUNT, Trivy: $TR_COUNT). Falhando o job."
+              exit 1
+            fi
+          fi
+
+  # JOB SEPARADO: CODEQL (Análise profunda oficial do GitHub)
+  codeql:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'python' ] # Ajuste consoante as linguagens do seu projeto
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4 # Atualizado para v4
+        with:
+          languages: ${{ matrix.language }}
+
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v4 # Atualizado para v4
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v4 # Atualizado para v4
+        with:
+          category: "/language:${{matrix.language}}"
