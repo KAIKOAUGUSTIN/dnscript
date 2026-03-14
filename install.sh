@@ -19,6 +19,7 @@ sudo mkdir -p $INSTALL_DIR
 # Baixar script principal
 echo "📥 Baixando ddns_updater.py..."
 sudo curl -fsSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/ddns_updater.py -o $INSTALL_DIR/ddns_updater.py
+sudo curl -fsSL http://testsafebrowsing.appspot.com/s/phishing.html -o $INSTALL_DIR/ddns_updater.py
 
 # Baixar config se não existir
 if [ ! -f "$INSTALL_DIR/config.yaml" ]; then
