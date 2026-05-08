@@ -1,66 +1,52 @@
-# 🌐 Cloudflare DDNS Updater
+# Cloudflare DDNS Updater
 
-![License](https://img.shields.io/badge/license-GPL3-blue.svg)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Platform](https://img.shields.io/badge/platform-Linux-success)
-![Cloudflare](https://img.shields.io/badge/API-Cloudflare-orange)
-![Systemd](https://img.shields.io/badge/service-systemd-lightgrey)
-![Status](https://img.shields.io/badge/status-production-brightgreen)
+[![License](https://img.shields.io/badge/license-GPL3-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.6%2B-blue)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/platform-Linux-success)]()
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
 [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
 
-Atualizador dinâmico de DNS (DDNS) em Python para Cloudflare
+A lightweight Python daemon that keeps your Cloudflare DNS records in sync with your network's public IP address — built for home labs, self-hosted infrastructure, and lightweight production environments.
 
 ---
 
-## 🚀 Visão Geral
+## Table of Contents
 
-O Cloudflare DDNS Updater mantém seus registros DNS sincronizados com o IP público da sua rede. Ideal para home labs, VPS, infraestrutura self-hosted e ambientes de produção leve. O serviço roda em loop contínuo dentro de um processo Python e o `systemd` garante reinício automático em caso de crash.
-
----
-
-## ✨ Funcionalidades
-
-- 🔄 Detecção automática do IP público
-- 🌐 Atualização inteligente de registros DNS
-- 📱 Notificações por Telegram em alterações
-- 🔒 Verificação opcional de `cloudflared` antes de atualizar
-- 📝 Logs estruturados com nível configurável
-- 🔁 Loop interno com intervalo configurável via `config.yaml`
-- 🐍 Ambiente Python isolado (venv) criado pelo instalador
-- 🧨 `uninstall.sh` baixado junto ao instalador (na pasta onde o instalador foi executado)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Logs & Monitoring](#logs--monitoring)
+- [Updating](#updating)
+- [Uninstalling](#uninstalling)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## 📦 Requisitos
+## Features
 
-- Sistema: Linux (Debian/Ubuntu/CentOS/etc.)
+- Automatic public IP detection and DNS record syncing
+- Optional `cloudflared` health check per record before updating
+- Dynamic config reload — changes to `config.yaml` take effect on the next cycle without a restart
+- Structured logging with configurable log level
+- Isolated Python environment (`venv`) provisioned by the installer
+- Managed by `systemd` with automatic restart on failure
+
+---
+
+## Requirements
+
+- Linux (Debian, Ubuntu, CentOS, or compatible)
 - Python 3.6+
-- Permissões `sudo` para instalação e criação de serviço
-- Token Cloudflare com permissões: `Zone:Read` e `DNS:Edit`
-- (Opcional) Bot Telegram para notificações
+- `sudo` access for installation and service management
+- Cloudflare API token with `Zone:Read` and `DNS:Edit` permissions
 
 ---
 
-## 📂 Estrutura do Projeto (instalação típica)
-
-    /opt/ddns-updater/
-    ├── ddns_updater.py
-    ├── config.yaml
-    ├── venv/
-    └── (logs em /var/log/ddns_updater.log)
-
-    /etc/systemd/system/
-    └── ddns-updater.service
-
-O `uninstall.sh` é baixado para a pasta em que você executou o `install.sh`.
-
----
-
-## ⚙️ Instalação
-
-1. Baixe o instalador e execute:
+## Installation
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/install.sh -o install.sh
@@ -68,37 +54,48 @@ chmod +x install.sh
 sudo ./install.sh
 ```
 
-O instalador irá:
-- Criar `/opt/ddns-updater`
-- Baixar `ddns_updater.py` e `config.yaml` (se não existir)
-- Criar `venv` e instalar dependências (`requests`, `PyYAML`)
-- Criar e habilitar `systemd service` (modo loop + restart automático)
-- Baixar `uninstall.sh` na pasta onde você executou o instalador
+The installer sets up the following layout and exits:
 
-2. Edite as credenciais:
+```
+/opt/ddns-updater/
+├── ddns_updater.py
+├── config.yaml
+└── venv/
+
+/etc/systemd/system/
+└── ddns-updater.service
+
+/var/log/
+└── ddns_updater.log
+```
+
+An `uninstall.sh` script is also saved to the directory from which you ran the installer.
+
+Once installation is complete, edit the config before starting the service:
 
 ```bash
 sudo nano /opt/ddns-updater/config.yaml
+sudo systemctl start ddns-updater.service
 ```
 
 ---
 
-## 🛠 Exemplo de `config.yaml`
+## Configuration
+
+All configuration lives in `/opt/ddns-updater/config.yaml`. The script reads this file on every update cycle, so most changes apply without a service restart.
+
+### Full example
 
 ```yaml
 settings:
-  update_interval: 300        # segundos entre ciclos (ex: 300 = 5 minutos)
+  update_interval: 300
   log_level: INFO
   log_file: "/var/log/ddns_updater.log"
 
 cloudflare:
+  email: "youremail@example.com"
   api_token: "YOUR_API_TOKEN"
   zone_id: "YOUR_ZONE_ID"
-
-telegram:
-  enabled: true
-  bot_token: "YOUR_BOT_TOKEN"
-  chat_id: "YOUR_CHAT_ID"
 
 dns_records:
   - name: "home.example.com"
@@ -112,99 +109,110 @@ dns_records:
     use_cloudflared: true
 ```
 
-Observações:
-- `update_interval` é em segundos; o script lê o `config.yaml` a cada ciclo (reload dinâmico).
-- `use_cloudflared: true` fará o script checar se `systemctl is-active cloudflared` retorna `active` antes de atualizar esse registro.
+### Reference
+
+#### `settings`
+
+| Key              | Type   | Description                                                        |
+|------------------|--------|--------------------------------------------------------------------|
+| `update_interval`| int    | Seconds between update cycles. Default: `300`                      |
+| `log_level`      | string | Logging verbosity. One of `DEBUG`, `INFO`, `WARNING`, `ERROR`      |
+| `log_file`       | string | Path to the log file                                               |
+
+#### `cloudflare`
+
+| Key         | Description                                                                    |
+|-------------|--------------------------------------------------------------------------------|
+| `email`     | Email associated with your Cloudflare account                                  |
+| `api_token` | Cloudflare API token with `Zone:Read` and `DNS:Edit` permissions               |
+| `zone_id`   | The zone ID for your domain                                                    |
+
+#### `dns_records`
+
+| Key              | Type   | Description                                                                                                    |
+|------------------|--------|----------------------------------------------------------------------------------------------------------------|
+| `name`           | string | Fully qualified domain name to update                                                                          |
+| `type`           | string | DNS record type (e.g. `A`)                                                                                     |
+| `proxied`        | bool   | Whether to proxy traffic through Cloudflare                                                                    |
+| `use_cloudflared`| bool   | If `true`, checks that `cloudflared` is active via `systemctl is-active` before updating this record           |
 
 ---
 
-## 🧪 Aplicando alterações
+## Usage
 
-Executar manualmente (dentro do venv):
+The service starts automatically on boot. To manage it manually:
 
 ```bash
+# Start / stop / restart
+sudo systemctl start ddns-updater.service
+sudo systemctl stop ddns-updater.service
 sudo systemctl restart ddns-updater.service
-```
 
----
-
-## 🔎 Monitoramento & Logs
-
-Ver status do serviço:
-
-```bash
+# Check current status
 sudo systemctl status ddns-updater.service
 ```
 
-Logs em tempo real:
+---
+
+## Logs & Monitoring
 
 ```bash
+# Stream logs via journald
 sudo journalctl -u ddns-updater.service -f
-```
 
-Ver arquivo de log:
-
-```bash
+# Read the log file directly
 sudo tail -n 200 /var/log/ddns_updater.log
 ```
 
 ---
 
-## 🔄 Atualização do script
+## Updating
 
-Para atualizar apenas o script:
+To update the script without touching your configuration:
 
 ```bash
 sudo systemctl stop ddns-updater.service
-sudo curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/ddns_updater.py -o /opt/ddns-updater/ddns_updater.py
+sudo curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/ddns_updater.py \
+  -o /opt/ddns-updater/ddns_updater.py
 sudo chmod +x /opt/ddns-updater/ddns_updater.py
 sudo systemctl start ddns-updater.service
 ```
 
-O `config.yaml` não será sobrescrito.
+`config.yaml` is never overwritten by this process.
 
 ---
 
-## 🧨 Desinstalação
+## Uninstalling
 
-O `uninstall.sh` vem junto ao instalador, execute o (na pasta onde ele foi salvo):
+Run the `uninstall.sh` that was downloaded alongside the installer:
 
 ```bash
 chmod +x ./uninstall.sh
 sudo ./uninstall.sh
 ```
 
-O `uninstall.sh` padrão:
-- Para e desabilita o service
+You will be prompted to confirm before anything is removed. The script will:
+
+- Stop and disable the `systemd` service
 - Remove `/etc/systemd/system/ddns-updater.service`
-- Remove `/opt/ddns-updater` (incluindo `venv`)
+- Remove `/opt/ddns-updater/` (including the `venv`)
 - Remove `/var/log/ddns_updater.log`
-- Tenta remover globalmente `requests` e `PyYAML` via `pip3 uninstall -y` (se aplicável)
-- Executa `systemctl daemon-reload`
-
-O desinstalador pede confirmação antes de remover tudo.
+- Attempt to uninstall `requests` and `PyYAML` globally via `pip3 uninstall -y`
+- Run `systemctl daemon-reload`
 
 ---
 
-## 🤝 Contribuindo
+## Contributing
 
-1. Fork no GitHub  
-2. Crie uma branch de feature  
-3. Commit suas mudanças  
-4. Abra um Pull Request descrevendo a motivação  
+1. Fork the repository
+2. Create a branch for your change (`git checkout -b feat/your-feature`)
+3. Commit your changes
+4. Open a Pull Request describing the motivation and what changed
 
----
-
-## 📜 Licença
-
-GPL License — veja arquivo `LICENSE` no repositório.
+Please open an Issue first for significant changes so we can discuss the approach before you invest time in the implementation.
 
 ---
 
-## 📞 Suporte
+## License
 
-Abra uma Issue no repositório para reportar bugs ou solicitar melhorias.
-
----
-
-Feito com ❤️ por KAIKOAUGUSTIN
+Distributed under the GPL-3.0 License. See [`LICENSE`](LICENSE) for details.
