@@ -1,193 +1,231 @@
 # Cloudflare DDNS Updater
 
-![License](https://img.shields.io/badge/license-GPL3-blue.svg)
-![Python](https://img.shields.io/badge/python-3.10%2B-blue)
-![Platform](https://img.shields.io/badge/platform-Linux-success)
-![Cloudflare](https://img.shields.io/badge/API-Cloudflare-orange)
-![Systemd](https://img.shields.io/badge/service-systemd-lightgrey)
-![Status](https://img.shields.io/badge/status-production-brightgreen)
+[![License](https://img.shields.io/badge/license-GPL3-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.6%2B-blue)](https://www.python.org/)
+[![Platform](https://img.shields.io/badge/platform-Linux-success)]()
 [![Security Rating](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
 [![Reliability Rating](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=reliability_rating)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
+[![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=KAIKOAUGUSTIN_dnscript&metric=vulnerabilities)](https://sonarcloud.io/summary/new_code?id=KAIKOAUGUSTIN_dnscript)
 
-## Overview
-
-A lightweight, production-ready dynamic DNS updater for Cloudflare that automatically keeps your DNS records in sync with your current public IP address. Designed for homelab setups, self-hosted infrastructure, and environments where static IPs aren't available.
-
-## Features
-
-- **Automatic IP Detection** – Monitors your public IP and updates Cloudflare records only when changes occur
-- **Cloudflare API Integration** – Direct, efficient integration using Cloudflare's official API
-- **Systemd Integration** – Runs as a managed system service with automatic restart capabilities
-- **Minimal Overhead** – Lightweight Python implementation suitable for low-resource environments
-- **Credential Security** – Encrypted credential handling and secure token management
-- **Detailed Logging** – Comprehensive logging for monitoring and debugging
-- **Multiple Record Support** – Update single or multiple DNS records simultaneously
-- **IPv4 & IPv6 Ready** – Full support for both address families
-
-## Requirements
-
-- **Python** 3.10 or higher
-- **Linux** system with systemd
-- **Cloudflare Account** with API access enabled
-- **Cloudflare API Token** with DNS edit permissions
-
-## Quick Start
-
-### 1. Installation
-
-```bash
-git clone https://github.com/KAIKOAUGUSTIN/cloudflare-ddns-updater.git
-cd cloudflare-ddns-updater
-pip install -r requirements.txt
-```
-
-### 2. Configuration
-
-Create a `.env` file in the project root:
-
-```env
-CLOUDFLARE_API_TOKEN=your_api_token_here
-CLOUDFLARE_ZONE_ID=your_zone_id_here
-CLOUDFLARE_RECORD_IDS=record_id_1,record_id_2
-CHECK_INTERVAL=300
-LOG_LEVEL=INFO
-```
-
-### 3. Setup as Systemd Service
-
-```bash
-sudo cp cloudflare-ddns.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable cloudflare-ddns
-sudo systemctl start cloudflare-ddns
-```
-
-### 4. Verify Status
-
-```bash
-sudo systemctl status cloudflare-ddns
-journalctl -u cloudflare-ddns -f
-```
-
-## Configuration
-
-### Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `CLOUDFLARE_API_TOKEN` | Your Cloudflare API token | *Required* |
-| `CLOUDFLARE_ZONE_ID` | The zone ID from Cloudflare dashboard | *Required* |
-| `CLOUDFLARE_RECORD_IDS` | Comma-separated list of record IDs to update | *Required* |
-| `CHECK_INTERVAL` | Time in seconds between IP checks | `300` |
-| `LOG_LEVEL` | Logging verbosity (DEBUG, INFO, WARNING, ERROR) | `INFO` |
-| `IP_PROVIDER` | External service for IP detection | `ipify` |
-
-### Getting Your Cloudflare Credentials
-
-1. Visit [Cloudflare Dashboard](https://dash.cloudflare.com)
-2. Select your domain and navigate to **DNS**
-3. Find the record IDs you want to update
-4. Create an API token with DNS edit permissions
-5. Copy the Zone ID from the overview page
-
-## How It Works
-
-The updater runs on a configurable interval and:
-
-1. Fetches your current public IP address
-2. Compares it against the last known value
-3. If changed, updates all configured Cloudflare DNS records
-4. Logs the result and waits for the next check cycle
-
-This approach minimizes API calls and avoids unnecessary rate limiting.
-
-## Troubleshooting
-
-### Service won't start
-```bash
-journalctl -u cloudflare-ddns -n 50 -p err
-```
-Check that your `.env` file is in the correct location with proper permissions.
-
-### IP updates not working
-- Verify your API token has DNS edit permissions
-- Confirm the record IDs are correct
-- Check rate limiting: Cloudflare has API request limits
-- Review logs: `journalctl -u cloudflare-ddns -f`
-
-### High CPU or memory usage
-Increase the `CHECK_INTERVAL` to reduce polling frequency (default is 5 minutes, which is reasonable for most cases).
-
-## Advanced Usage
-
-### Running Multiple Instances
-
-Create separate service files for different domains:
-
-```bash
-sudo cp cloudflare-ddns.service /etc/systemd/system/cloudflare-ddns-example-com.service
-```
-
-Edit the new file and override the environment variables for each domain.
-
-### Custom IP Providers
-
-The updater supports multiple IP detection services. Configure via `IP_PROVIDER`:
-
-- `ipify` – Default, uses IPv4/IPv6 APIs
-- `ifconfig.me` – Alternative provider
-- `wtfismyip` – Another reliable option
-
-## Logging and Monitoring
-
-Logs are sent to systemd journal by default:
-
-```bash
-# View recent logs
-journalctl -u cloudflare-ddns --since "1 hour ago"
-
-# Follow logs in real-time
-journalctl -u cloudflare-ddns -f
-
-# Export logs to file
-journalctl -u cloudflare-ddns > dns-updates.log
-```
-
-## Security Considerations
-
-- **Never commit credentials** – Always use environment variables
-- **Restrict service file permissions** – Use `chmod 600` on config files
-- **Rotate API tokens** – Periodically refresh your Cloudflare credentials
-- **Monitor logs** – Watch for failed authentication attempts
-- **Use strong tokens** – Generate tokens with minimal required permissions
-
-## Performance
-
-- Memory footprint: ~20–30 MB
-- CPU usage: Minimal (idle between checks)
-- Network traffic: ~1 KB per check
-- Typical check duration: 2–5 seconds
-
-## License
-
-This project is licensed under the GPL-3.0 License. See `LICENSE` file for details.
-
-## Contributing
-
-Contributions are welcome! Please ensure code follows PEP 8 standards and includes appropriate tests.
-
-```bash
-# Run linting
-pylint src/
-
-# Run tests
-pytest tests/
-```
-
-## Support
-
-For issues, feature requests, or contributions, please open an issue or pull request on GitHub.
+A lightweight Python daemon that keeps your Cloudflare DNS records in sync with your network's public IP address — built for home labs, self-hosted infrastructure, and lightweight production environments.
 
 ---
 
-**Note:** This documentation assumes you're familiar with Linux systemd, environment variables, and Cloudflare's dashboard. For detailed Cloudflare API documentation, visit [developers.cloudflare.com](https://developers.cloudflare.com).
+## Table of Contents
+
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Usage](#usage)
+- [Logs & Monitoring](#logs--monitoring)
+- [Updating](#updating)
+- [Uninstalling](#uninstalling)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
+## Features
+
+- Automatic public IP detection and DNS record syncing
+- Telegram notifications on IP changes
+- Optional `cloudflared` health check per record before updating
+- Dynamic config reload — changes to `config.yaml` take effect on the next cycle without a restart
+- Structured logging with configurable log level
+- Isolated Python environment (`venv`) provisioned by the installer
+- Managed by `systemd` with automatic restart on failure
+
+---
+
+## Requirements
+
+- Linux (Debian, Ubuntu, CentOS, or compatible)
+- Python 3.6+
+- `sudo` access for installation and service management
+- Cloudflare API token with `Zone:Read` and `DNS:Edit` permissions
+- _(Optional)_ A Telegram bot for IP change notifications
+
+---
+
+## Installation
+
+```bash
+curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/install.sh -o install.sh
+chmod +x install.sh
+sudo ./install.sh
+```
+
+The installer sets up the following layout and exits:
+
+```
+/opt/ddns-updater/
+├── ddns_updater.py
+├── config.yaml
+└── venv/
+
+/etc/systemd/system/
+└── ddns-updater.service
+
+/var/log/
+└── ddns_updater.log
+```
+
+An `uninstall.sh` script is also saved to the directory from which you ran the installer.
+
+Once installation is complete, edit the config before starting the service:
+
+```bash
+sudo nano /opt/ddns-updater/config.yaml
+sudo systemctl start ddns-updater.service
+```
+
+---
+
+## Configuration
+
+All configuration lives in `/opt/ddns-updater/config.yaml`. The script reads this file on every update cycle, so most changes apply without a service restart.
+
+### Full example
+
+```yaml
+settings:
+  update_interval: 300
+  log_level: INFO
+  log_file: "/var/log/ddns_updater.log"
+
+cloudflare:
+  api_token: "YOUR_API_TOKEN"
+  zone_id: "YOUR_ZONE_ID"
+
+telegram:
+  enabled: true
+  bot_token: "YOUR_BOT_TOKEN"
+  chat_id: "YOUR_CHAT_ID"
+
+dns_records:
+  - name: "home.example.com"
+    type: "A"
+    proxied: false
+    use_cloudflared: false
+
+  - name: "nas.example.com"
+    type: "A"
+    proxied: true
+    use_cloudflared: true
+```
+
+### Reference
+
+#### `settings`
+
+| Key               | Type   | Description                                                      |
+|-------------------|--------|------------------------------------------------------------------|
+| `update_interval` | int    | Seconds between update cycles. Default: `300`                    |
+| `log_level`       | string | Logging verbosity. One of `DEBUG`, `INFO`, `WARNING`, `ERROR`    |
+| `log_file`        | string | Path to the log file                                             |
+
+#### `cloudflare`
+
+| Key         | Description                                                              |
+|-------------|--------------------------------------------------------------------------|
+| `api_token` | Cloudflare API token with `Zone:Read` and `DNS:Edit` permissions         |
+| `zone_id`   | The zone ID for your domain                                              |
+
+#### `telegram`
+
+| Key         | Type   | Description                                          |
+|-------------|--------|------------------------------------------------------|
+| `enabled`   | bool   | Enable or disable Telegram notifications             |
+| `bot_token` | string | Token from [@BotFather](https://t.me/BotFather)      |
+| `chat_id`   | string | Target chat or user ID                               |
+
+#### `dns_records`
+
+| Key               | Type   | Description                                                                                                              |
+|-------------------|--------|--------------------------------------------------------------------------------------------------------------------------|
+| `name`            | string | Fully qualified domain name to update                                                                                    |
+| `type`            | string | DNS record type (e.g. `A`)                                                                                               |
+| `proxied`         | bool   | Whether to proxy traffic through Cloudflare                                                                              |
+| `use_cloudflared` | bool   | If `true`, checks that `cloudflared` is active via `systemctl is-active` before updating this record                    |
+
+---
+
+## Usage
+
+The service starts automatically on boot. To manage it manually:
+
+```bash
+# Start / stop / restart
+sudo systemctl start ddns-updater.service
+sudo systemctl stop ddns-updater.service
+sudo systemctl restart ddns-updater.service
+
+# Check current status
+sudo systemctl status ddns-updater.service
+```
+
+---
+
+## Logs & Monitoring
+
+```bash
+# Stream logs via journald
+sudo journalctl -u ddns-updater.service -f
+
+# Read the log file directly
+sudo tail -n 200 /var/log/ddns_updater.log
+```
+
+---
+
+## Updating
+
+To update the script without touching your configuration:
+
+```bash
+sudo systemctl stop ddns-updater.service
+sudo curl -sSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/ddns_updater.py \
+  -o /opt/ddns-updater/ddns_updater.py
+sudo chmod +x /opt/ddns-updater/ddns_updater.py
+sudo systemctl start ddns-updater.service
+```
+
+`config.yaml` is never overwritten by this process.
+
+---
+
+## Uninstalling
+
+Run the `uninstall.sh` that was downloaded alongside the installer:
+
+```bash
+chmod +x ./uninstall.sh
+sudo ./uninstall.sh
+```
+
+You will be prompted to confirm before anything is removed. The script will:
+
+- Stop and disable the `systemd` service
+- Remove `/etc/systemd/system/ddns-updater.service`
+- Remove `/opt/ddns-updater/` (including the `venv`)
+- Remove `/var/log/ddns_updater.log`
+- Attempt to uninstall `requests` and `PyYAML` globally via `pip3 uninstall -y`
+- Run `systemctl daemon-reload`
+
+---
+
+## Contributing
+
+1. Fork the repository
+2. Create a branch for your change (`git checkout -b feat/your-feature`)
+3. Commit your changes
+4. Open a Pull Request describing the motivation and what changed
+
+Please open an Issue first for significant changes so we can discuss the approach before you invest time in the implementation.
+
+---
+
+## License
+
+Distributed under the GPL-3.0 License. See [`LICENSE`](LICENSE) for details.
