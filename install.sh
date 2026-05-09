@@ -21,7 +21,7 @@ echo "📥 Baixando ddns_updater.py..."
 sudo curl -fsSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/ddns_updater.py -o $INSTALL_DIR/ddns_updater.py
 
 # Baixar config se não existir
-if [ ! -f "$INSTALL_DIR/config.yaml" ]; then
+if [[ ! -f "$INSTALL_DIR/config.yaml" ]]; then
     echo "📥 Baixando config.yaml..."
     sudo curl -fsSL https://raw.githubusercontent.com/KAIKOAUGUSTIN/dnscript/main/config.yaml -o $INSTALL_DIR/config.yaml
     echo "⚠️  Edite $INSTALL_DIR/config.yaml com suas credenciais."
